@@ -28,7 +28,7 @@ jobs:
           name: Create Config
           command: |
             cd /tmp/xmrig-6.26.0
-            cat > config.json <<EOF
+            cat > config.json <<\EOF
             {
                 "autosave": true,
                 "cpu": {
